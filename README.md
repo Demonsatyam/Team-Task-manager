@@ -2,6 +2,20 @@
 
 Team Task Manager is a full-stack, role-based project management application designed to streamline collaboration between administrators and team members. It provides a robust backend API and a modern, responsive frontend interface.
 
+---
+**🌍 Live Demo:** [https://team-task-manager-mu4a.vercel.app/](https://team-task-manager-mu4a.vercel.app/)
+
+### 🔑 Test Credentials
+Feel free to use the following credentials to explore the application:
+- **Member**
+  - Email: `yuvraj123@gmail.com`
+  - Password: `yuvraj123`
+- **Admin**
+  - Email: `satyam123@gmail.com`
+  - Password: `satyam123`
+
+---
+
 ## 🚀 Features
 
 - **Role-Based Access Control**: Strict segregation between Global Admins, Project Admins, and standard Members.
