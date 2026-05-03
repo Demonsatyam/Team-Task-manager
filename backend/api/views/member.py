@@ -67,26 +67,44 @@ def update_task_status(request, task_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def dashboard_summary(request):
-    """Get dashboard stats for the logged-in user"""
-    my_tasks = Task.objects.filter(assigned_to=request.user)
+    """Get dashboard stats, active projects, and assigned tasks for the logged-in user"""
+    my_tasks_qs = Task.objects.filter(assigned_to=request.user).order_by('due_date')
     
-    total_assigned = my_tasks.count()
+    total_assigned = my_tasks_qs.count()
     status_counts = {
-        'To Do': my_tasks.filter(status='To Do').count(),
-        'In Progress': my_tasks.filter(status='In Progress').count(),
-        'Done': my_tasks.filter(status='Done').count()
+        'To Do': my_tasks_qs.filter(status='To Do').count(),
+        'In Progress': my_tasks_qs.filter(status='In Progress').count(),
+        'Done': my_tasks_qs.filter(status='Done').count()
     }
     
     # Overdue tasks (due date is in the past and not Done)
     now = timezone.now()
-    overdue_tasks = my_tasks.filter(due_date__lt=now).exclude(status='Done').count()
+    overdue_tasks = my_tasks_qs.filter(due_date__lt=now).exclude(status='Done').count()
 
-    # My projects count
-    my_projects = Membership.objects.filter(user=request.user).count()
+    # Active projects formatting
+    memberships = Membership.objects.filter(user=request.user).select_related('project')
+    projects_data = []
+    for membership in memberships:
+        project = membership.project
+        project_tasks = Task.objects.filter(project=project)
+        total_project_tasks = project_tasks.count()
+        completed_project_tasks = project_tasks.filter(status='Done').count()
+        
+        projects_data.append({
+            'id': project.id,
+            'name': project.name,
+            'tasks_count': total_project_tasks,
+            'completed_tasks_count': completed_project_tasks
+        })
+
+    # Serialize tasks
+    tasks_data = TaskSerializer(my_tasks_qs, many=True).data
 
     return Response({
-        'projects_count': my_projects,
-        'tasks': {
+        'active_projects': projects_data,
+        'assigned_tasks': tasks_data,
+        'summary': {
+            'projects_count': memberships.count(),
             'total_assigned': total_assigned,
             'overdue': overdue_tasks,
             'status_breakdown': status_counts

@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views.auth import register, register_admin, user_login, admin_login, logout
-from .views.admin import create_project, manage_project, add_team_member, remove_team_member, create_task, manage_task_admin
+from .views.admin import create_project, manage_project, add_team_member, remove_team_member, create_task, manage_task_admin, admin_dashboard_summary, admin_team_summary
 from .views.member import list_my_projects, list_project_tasks, update_task_status, dashboard_summary
 
 urlpatterns = [
@@ -20,6 +20,8 @@ urlpatterns = [
     path('admin/projects/<int:project_id>/members/<int:user_id>/', remove_team_member, name='remove_team_member'),
     path('admin/projects/<int:project_id>/tasks/', create_task, name='create_task'),
     path('admin/projects/<int:project_id>/tasks/<int:task_id>/', manage_task_admin, name='manage_task_admin'),
+    path('admin/dashboard/', admin_dashboard_summary, name='admin_dashboard_summary'),
+    path('admin/team/', admin_team_summary, name='admin_team_summary'),
 
     # Member endpoints
     path('member/projects/', list_my_projects, name='list_my_projects'),

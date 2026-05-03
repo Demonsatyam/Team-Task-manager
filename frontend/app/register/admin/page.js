@@ -1,20 +1,43 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import styles from "../register.module.css";
+import { registerAdmin, storeToken } from "../../../services/api";
 
 export default function AdminRegisterPage() {
   const router = useRouter();
+  
+  const [formData, setFormData] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    password: "",
+  });
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleRegister = (e) => {
+  const handleChange = (e) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({ ...prev, [id]: value }));
+  };
+
+  const handleRegister = async (e) => {
     e.preventDefault();
-    // Here we would typically call the backend API:
-    // Admin: POST /api/auth/register/admin/
-    
-    // For now, redirect to login page after successful registration
-    alert(`Successfully registered as Admin!`);
-    router.push("/login/admin");
+    setError(null);
+    setLoading(true);
+
+    try {
+      const data = await registerAdmin(formData);
+      storeToken(data);
+      alert(`Successfully registered as Admin!`);
+      router.push("/admin/dashboard");
+    } catch (err) {
+      setError(err.message || "Admin registration failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -48,6 +71,8 @@ export default function AdminRegisterPage() {
           <p className={styles.subtitle}>Register to manage teams and projects</p>
         </div>
 
+        {error && <div className={styles.errorMessage} style={{ color: 'red', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
+
         <form className={styles.form} onSubmit={handleRegister}>
           <div className={styles.nameGroup}>
             <div className={styles.formGroup}>
@@ -58,6 +83,8 @@ export default function AdminRegisterPage() {
                 className="input-field" 
                 placeholder="Admin" 
                 required 
+                value={formData.first_name}
+                onChange={handleChange}
               />
             </div>
             <div className={styles.formGroup}>
@@ -68,6 +95,8 @@ export default function AdminRegisterPage() {
                 className="input-field" 
                 placeholder="User" 
                 required 
+                value={formData.last_name}
+                onChange={handleChange}
               />
             </div>
           </div>
@@ -80,6 +109,8 @@ export default function AdminRegisterPage() {
               className="input-field" 
               placeholder="admin@company.com" 
               required 
+              value={formData.email}
+              onChange={handleChange}
             />
           </div>
 
@@ -92,11 +123,13 @@ export default function AdminRegisterPage() {
               placeholder="••••••••" 
               required 
               minLength={8}
+              value={formData.password}
+              onChange={handleChange}
             />
           </div>
 
-          <button type="submit" className={`btn-primary ${styles.submitBtn}`}>
-            Register as Admin
+          <button type="submit" className={`btn-primary ${styles.submitBtn}`} disabled={loading}>
+            {loading ? "Registering..." : "Register as Admin"}
           </button>
 
           <div className={styles.divider}>

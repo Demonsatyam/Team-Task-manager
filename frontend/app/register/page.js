@@ -4,18 +4,40 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import styles from "./register.module.css";
+import { registerMember, storeToken } from "../../services/api";
 
 export default function MemberRegisterPage() {
   const router = useRouter();
+  
+  const [formData, setFormData] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    password: "",
+  });
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleRegister = (e) => {
+  const handleChange = (e) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({ ...prev, [id]: value }));
+  };
+
+  const handleRegister = async (e) => {
     e.preventDefault();
-    // Here we would typically call the backend API:
-    // Member: POST /api/auth/register/
-    
-    // For now, redirect to login page after successful registration
-    alert(`Successfully registered as Member!`);
-    router.push("/login");
+    setError(null);
+    setLoading(true);
+
+    try {
+      const data = await registerMember(formData);
+      storeToken(data);
+      alert(`Successfully registered as Member!`);
+      router.push("/member/workspace");
+    } catch (err) {
+      setError(err.message || "Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,6 +64,8 @@ export default function MemberRegisterPage() {
           <p className={styles.subtitle}>Sign up to start tracking your tasks</p>
         </div>
 
+        {error && <div className={styles.errorMessage} style={{ color: 'red', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
+
         <form className={styles.form} onSubmit={handleRegister}>
           <div className={styles.nameGroup}>
             <div className={styles.formGroup}>
@@ -52,6 +76,8 @@ export default function MemberRegisterPage() {
                 className="input-field" 
                 placeholder="John" 
                 required 
+                value={formData.first_name}
+                onChange={handleChange}
               />
             </div>
             <div className={styles.formGroup}>
@@ -62,6 +88,8 @@ export default function MemberRegisterPage() {
                 className="input-field" 
                 placeholder="Doe" 
                 required 
+                value={formData.last_name}
+                onChange={handleChange}
               />
             </div>
           </div>
@@ -74,6 +102,8 @@ export default function MemberRegisterPage() {
               className="input-field" 
               placeholder="name@company.com" 
               required 
+              value={formData.email}
+              onChange={handleChange}
             />
           </div>
 
@@ -86,11 +116,13 @@ export default function MemberRegisterPage() {
               placeholder="••••••••" 
               required 
               minLength={8}
+              value={formData.password}
+              onChange={handleChange}
             />
           </div>
 
-          <button type="submit" className={`btn-primary ${styles.submitBtn}`}>
-            Register as Member
+          <button type="submit" className={`btn-primary ${styles.submitBtn}`} disabled={loading}>
+            {loading ? "Registering..." : "Register as Member"}
           </button>
 
           <div className={styles.divider}>

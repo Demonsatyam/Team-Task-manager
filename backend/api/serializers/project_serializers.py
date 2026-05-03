@@ -5,10 +5,13 @@ from .user_serializers import UserSerializer
 
 class MembershipSerializer(serializers.ModelSerializer):
     user_email = serializers.ReadOnlyField(source='user.email')
+    user_first_name = serializers.ReadOnlyField(source='user.first_name')
+    user_last_name = serializers.ReadOnlyField(source='user.last_name')
+    project_name = serializers.ReadOnlyField(source='project.name')
 
     class Meta:
         model = Membership
-        fields = ('id', 'user', 'user_email', 'project', 'role', 'joined_at')
+        fields = ('id', 'user', 'user_email', 'user_first_name', 'user_last_name', 'project', 'project_name', 'role', 'joined_at')
         read_only_fields = ('project',)
 
 class ProjectSerializer(serializers.ModelSerializer):

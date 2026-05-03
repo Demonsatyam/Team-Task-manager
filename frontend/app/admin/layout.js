@@ -1,11 +1,21 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./layout.module.css";
+import { getCurrentUser, logoutUser } from "../../services/api";
 
 export default function AdminLayout({ children }) {
   const pathname = usePathname();
+  const [userName, setUserName] = useState("Admin");
+
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user) {
+      setUserName(user.first_name ? `${user.first_name} ${user.last_name}`.trim() : user.email.split("@")[0]);
+    }
+  }, []);
 
   return (
     <div className={styles.layout}>
@@ -14,6 +24,16 @@ export default function AdminLayout({ children }) {
           Admin Portal
         </div>
         <nav className={styles.nav}>
+          <Link 
+            href="/admin/projects" 
+            className={`${styles.navItem} ${pathname === "/admin/projects" ? styles.active : ""}`}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+            </svg>
+            Project Management
+          </Link>
           <Link 
             href="/admin/dashboard" 
             className={`${styles.navItem} ${pathname === "/admin/dashboard" ? styles.active : ""}`}
@@ -40,21 +60,36 @@ export default function AdminLayout({ children }) {
           </Link>
         </nav>
         <div className={styles.sidebarFooter}>
-          <Link href="/login" className={styles.navItem}>
+          <button 
+            onClick={async () => {
+              await logoutUser();
+              window.location.href = '/login/admin';
+            }}
+            className={styles.navItem}
+            style={{
+              background: 'none',
+              border: 'none',
+              width: '100%',
+              textAlign: 'left',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              fontSize: 'inherit'
+            }}
+          >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
               <polyline points="16 17 21 12 16 7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>
             </svg>
             Sign out
-          </Link>
+          </button>
         </div>
       </aside>
       <main className={styles.main}>
         <header className={styles.topbar}>
           <div className={styles.userProfile}>
-            <span>Admin User</span>
-            <div className={styles.avatar}>A</div>
+            <span>{userName}</span>
+            <div className={styles.avatar}>{userName[0].toUpperCase()}</div>
           </div>
         </header>
         <div className={styles.content}>

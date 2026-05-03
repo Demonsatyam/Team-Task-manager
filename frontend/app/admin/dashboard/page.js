@@ -1,23 +1,58 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import styles from "./dashboard.module.css";
-
-// Mock data for Active Task Inventory
-const mockTasks = [
-  { id: "TSK-001", title: "Update Login Page UI", assignee: "alice@company.com", status: "In Progress", dueDate: "2026-05-10", avatar: "A" },
-  { id: "TSK-002", title: "Database Migration", assignee: "bob@company.com", status: "To Do", dueDate: "2026-05-15", avatar: "B" },
-  { id: "TSK-003", title: "Fix Authentication Bug", assignee: "charlie@company.com", status: "Done", dueDate: "2026-05-01", avatar: "C" },
-  { id: "TSK-004", title: "Design System Implementation", assignee: "alice@company.com", status: "In Progress", dueDate: "2026-05-12", avatar: "A" },
-];
+import { getAdminDashboardSummary, createTask } from "../../../services/api";
 
 export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [data, setData] = useState({ managed_projects: [], all_tasks: [] });
+  const [loading, setLoading] = useState(true);
+  
+  // Form State
+  const [formData, setFormData] = useState({
+    title: "", description: "", status: "To Do", due_date: "", assigned_to_email: "", project_id: ""
+  });
 
-  const filteredTasks = mockTasks.filter(task => 
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const res = await getAdminDashboardSummary();
+      setData(res);
+      if (res.managed_projects.length > 0) {
+        setFormData(prev => ({ ...prev, project_id: res.managed_projects[0].id }));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.id]: e.target.value });
+  };
+
+  const handleCreateTask = async (e) => {
+    e.preventDefault();
+    if (!formData.project_id) return alert("Please select a project.");
+    try {
+      await createTask(formData.project_id, formData);
+      alert("Task created successfully!");
+      setFormData({ title: "", description: "", status: "To Do", due_date: "", assigned_to_email: "", project_id: data.managed_projects[0]?.id || "" });
+      fetchData(); // Refresh table
+    } catch (err) {
+      alert("Failed to create task. " + (err.message || ""));
+    }
+  };
+
+  const filteredTasks = data.all_tasks.filter(task => 
     task.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    task.assignee.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    task.id.toLowerCase().includes(searchTerm.toLowerCase())
+    (task.assigned_to_email && task.assigned_to_email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const getStatusBadge = (status) => {
@@ -27,6 +62,8 @@ export default function AdminDashboard() {
       default: return <span className="badge badge-todo">To Do</span>;
     }
   };
+
+  if (loading) return <div style={{ padding: '2rem' }}>Loading Dashboard...</div>;
 
   return (
     <div>
@@ -38,20 +75,30 @@ export default function AdminDashboard() {
         {/* Left: New Task Creation Form */}
         <div className={styles.formCard}>
           <h2 className={styles.cardTitle}>Create New Task</h2>
-          <form>
+          <form onSubmit={handleCreateTask}>
+            <div className={styles.formGroup}>
+              <label className="label" htmlFor="project_id">Project</label>
+              <select id="project_id" className="input-field" value={formData.project_id} onChange={handleInputChange} required>
+                {data.managed_projects.length === 0 && <option value="">No projects available</option>}
+                {data.managed_projects.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+
             <div className={styles.formGroup}>
               <label className="label" htmlFor="title">Task Title</label>
-              <input type="text" id="title" className="input-field" placeholder="E.g., Implement payment gateway" required />
+              <input type="text" id="title" className="input-field" placeholder="E.g., Implement payment gateway" value={formData.title} onChange={handleInputChange} required />
             </div>
             
             <div className={styles.formGroup}>
               <label className="label" htmlFor="description">Description</label>
-              <textarea id="description" className="input-field" rows="3" placeholder="Provide details about the task..." required></textarea>
+              <textarea id="description" className="input-field" rows="3" placeholder="Provide details about the task..." value={formData.description} onChange={handleInputChange}></textarea>
             </div>
 
             <div className={styles.formGroup}>
               <label className="label" htmlFor="status">Initial Status</label>
-              <select id="status" className="input-field">
+              <select id="status" className="input-field" value={formData.status} onChange={handleInputChange}>
                 <option value="To Do">To Do</option>
                 <option value="In Progress">In Progress</option>
                 <option value="Done">Done</option>
@@ -59,16 +106,16 @@ export default function AdminDashboard() {
             </div>
 
             <div className={styles.formGroup}>
-              <label className="label" htmlFor="dueDate">Due Date</label>
-              <input type="date" id="dueDate" className="input-field" required />
+              <label className="label" htmlFor="due_date">Due Date</label>
+              <input type="date" id="due_date" className="input-field" value={formData.due_date} onChange={handleInputChange} />
             </div>
 
             <div className={styles.formGroup}>
-              <label className="label" htmlFor="assignee">Assignee (Email)</label>
-              <input type="email" id="assignee" className="input-field" placeholder="member@company.com" required />
+              <label className="label" htmlFor="assigned_to_email">Assignee (Email)</label>
+              <input type="email" id="assigned_to_email" className="input-field" placeholder="member@company.com" value={formData.assigned_to_email} onChange={handleInputChange} />
             </div>
 
-            <button type="submit" className={`btn-primary ${styles.submitBtn}`}>Create Task</button>
+            <button type="submit" className={`btn-primary ${styles.submitBtn}`} disabled={data.managed_projects.length === 0}>Create Task</button>
           </form>
         </div>
 
@@ -103,20 +150,27 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {filteredTasks.map(task => (
+                {filteredTasks.length > 0 ? filteredTasks.map(task => (
                   <tr key={task.id}>
-                    <td style={{ fontWeight: 500, color: 'var(--color-blue-700)' }}>{task.id}</td>
-                    <td>{task.title}</td>
+                    <td style={{ fontWeight: 500, color: 'var(--color-blue-700)' }}>TSK-{task.id}</td>
+                    <td>
+                      <div>{task.title}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-slate-500)' }}>{task.project_name}</div>
+                    </td>
                     <td>
                       <div className={styles.assigneeCell}>
-                        <div className={styles.assigneeAvatar}>{task.avatar}</div>
-                        <span>{task.assignee}</span>
+                        <div className={styles.assigneeAvatar}>{task.assigned_to_email ? task.assigned_to_email[0].toUpperCase() : '?'}</div>
+                        <span>{task.assigned_to_email || 'Unassigned'}</span>
                       </div>
                     </td>
                     <td>{getStatusBadge(task.status)}</td>
-                    <td>{task.dueDate}</td>
+                    <td>{task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No date'}</td>
                   </tr>
-                ))}
+                )) : (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', color: 'var(--color-slate-500)' }}>No tasks found.</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

@@ -164,3 +164,59 @@ def manage_task_admin(request, project_id, task_id):
     elif request.method == 'DELETE':
         task.delete()
         return Response({'message': 'Task deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+
+
+# --- DASHBOARD VIEWS ---
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_dashboard_summary(request):
+    """Get dashboard stats and active tasks for the logged-in admin"""
+    if request.user.is_staff or request.user.is_superuser:
+        projects = list(Project.objects.all())
+    else:
+        memberships = Membership.objects.filter(user=request.user, role='Admin').select_related('project')
+        projects = [m.project for m in memberships]
+    
+    # 2. Get all tasks for these projects
+    tasks_qs = Task.objects.filter(project__in=projects).order_by('due_date')
+    
+    # 3. Serialize data
+    projects_data = ProjectSerializer(projects, many=True).data
+    tasks_data = TaskSerializer(tasks_qs, many=True).data
+    
+    return Response({
+        'managed_projects': projects_data,
+        'all_tasks': tasks_data,
+        'summary': {
+            'projects_count': len(projects),
+            'tasks_count': tasks_qs.count()
+        }
+    })
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_team_summary(request):
+    """Get all managed projects and their team members for the logged-in admin"""
+    if request.user.is_staff or request.user.is_superuser:
+        projects = list(Project.objects.all())
+    else:
+        memberships_admin = Membership.objects.filter(user=request.user, role='Admin').select_related('project')
+        projects = [m.project for m in memberships_admin]
+    
+    all_memberships = Membership.objects.filter(project__in=projects).select_related('user', 'project').order_by('project__name', 'user__email')
+    
+    projects_data = ProjectSerializer(projects, many=True).data
+    memberships_data = MembershipSerializer(all_memberships, many=True).data
+    
+    # Calculate unique users across all managed projects
+    unique_user_ids = set([m.user_id for m in all_memberships])
+    
+    return Response({
+        'managed_projects': projects_data,
+        'memberships': memberships_data,
+        'capacity': {
+            'used': len(unique_user_ids),
+            'total': 20
+        }
+    })
